@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using master_slave_pattern.Infrastructure.Models;
 using master_slave_pattern.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -26,6 +27,7 @@ namespace master_slave_pattern
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddScoped<Master>();
+            services.AddSingleton<ProductServices>();
             services.AddControllers();
         }
 
