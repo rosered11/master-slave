@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30320.27
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "master-slave-pattern", "master-slave-pattern\master-slave-pattern.csproj", "{27454BA6-425C-4525-B8B8-C17ED738CA93}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{27454BA6-425C-4525-B8B8-C17ED738CA93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27454BA6-425C-4525-B8B8-C17ED738CA93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27454BA6-425C-4525-B8B8-C17ED738CA93}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27454BA6-425C-4525-B8B8-C17ED738CA93}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CCF8E12D-448B-4F17-995F-01A0C787B280}
+	EndGlobalSection
+EndGlobal
