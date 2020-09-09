@@ -1,4 +1,6 @@
-﻿using MongoDB.Driver;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,36 +8,89 @@ using System.Threading.Tasks;
 
 namespace master_slave_pattern.Infrastructure.Models
 {
-    public class ProductServices
+    public class ProductServices : GenericServce<Product>
+    {   
+        public ProductServices() : base ("Products")
+        {
+        }
+
+        public override Product Get(string name)
+        {
+            return _context.Find(item => item.Name == name).FirstOrDefault();
+        }
+    }
+
+    public class CustomerServices : GenericServce<Customer>
     {
-        private readonly IMongoCollection<Product> _products;
-
-        public ProductServices()
+        public CustomerServices() : base("Customers")
         {
-            var client = new MongoClient("mongodb://root:root@localhost:30500");
-            var database = client.GetDatabase("master-slave");
-            _products = database.GetCollection<Product>("Products");
+        }
+        public override Customer Get(string name)
+        {
+            return _context.Find(item => item.Name == name).FirstOrDefault();
+        }
+    }
+
+    public class RelationServices : GenericServce<Relation>
+    {
+        public RelationServices() : base("Relations")
+        {
         }
 
-        public List<Product> Get() =>
-           _products.Find(book => true).ToList();
-
-        public Product Get(string id) =>
-            _products.Find<Product>(book => book.Id == id).FirstOrDefault();
-
-        public Product Create(Product book)
+        public IEnumerable<Relation> GetByProductId(string productId)
         {
-            _products.InsertOne(book);
-            return book;
+            return _context.Find(item => item.ProductId == productId).ToList();
+        }
+    }
+
+    public class LogServices : GenericServce<Logs>
+    {
+        public LogServices() : base("Logs")
+        {
+        }
+    }
+
+    public class GenericServce<T> where T : BaseModel
+    {
+        protected readonly IMongoCollection<T> _context;
+        protected readonly MongoClient _client;
+        protected readonly IMongoDatabase _database;
+
+        public GenericServce(string collectionName)
+        {
+            _client = new MongoClient("mongodb://root:root@localhost:30500");
+            _database = _client.GetDatabase("master-slave");
+            _context = _database.GetCollection<T>(collectionName);
         }
 
-        public void Update(string id, Product bookIn) =>
-            _products.ReplaceOne(book => book.Id == id, bookIn);
+        public virtual List<T> Get() =>
+           _context.Find(item => true).ToList();
 
-        public void Remove(Product bookIn) =>
-            _products.DeleteOne(book => book.Id == bookIn.Id);
+        public virtual T Get(string id)
+        {
+            var filterId = Builders<T>.Filter.Eq("_id", id);
+            return _context.Find(filterId).FirstOrDefault();
+        }
+
+        public T Create(T item)
+        {
+            _context.InsertOne(item);
+            return item;
+        }
+
+        public void Update(string id, T item)
+        {
+            var filterId = Builders<T>.Filter.Eq("_id", id);
+            _context.ReplaceOne(filterId, item);
+        }
+
+        public void Remove(T item)
+        {
+            var filterId = Builders<T>.Filter.Eq("_id", item.Id);
+            _context.DeleteOne(filterId);
+        }
 
         public void Remove(string id) =>
-            _products.DeleteOne(book => book.Id == id);
+            _context.DeleteOne(item => item.Id == id);
     }
 }

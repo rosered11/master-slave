@@ -1,4 +1,7 @@
-﻿using System;
+﻿using master_slave_pattern.Enums;
+using master_slave_pattern.Infrastructure.Models;
+using master_slave_pattern.Serializer;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -12,166 +15,221 @@ namespace master_slave_pattern.Services
         public int step { get; set; }
         public string message { get; set; }
     }
+    
     public class Master
     {
         private List<State> _states = new List<State>();
         private int _number = 0;
-        List<Task<string>> slaves = new List<Task<string>>();
+        private Dictionary<TypeServiceEnum, Task<string>> slaves = new Dictionary<TypeServiceEnum, Task<string>>();
+        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
+        private readonly LogServices _log;
+        private readonly ProductServices _productContext;
+        private readonly CustomerServices _customerContext;
+        private readonly RelationServices _relationContext;
+        public Master(LogServices log, ProductServices productContext, 
+            CustomerServices customerContext, RelationServices relationContext)
+        {
+            _log = log;
+            _productContext = productContext;
+            _customerContext = customerContext;
+            _relationContext = relationContext;
+        }
         private void AddStep(string message)
         {
             _number += 1;
             _states.Add(new State { step = _number, message = message });
         }
-        public string Mannage()
+        public string Mannage(Request request)
         {
-            var results = new List<string>();
-            var actions = SplitCommand(new List<string> { "product", "customer", "relation" });
-
             try
             {
-                var empty = CallSlave(actions);
-                Thread.Sleep(3000);
+                var actions = SplitCommand(request);
+                CallSlave(actions);
                 return JsonSerializer.Serialize(_states);
             }
             catch(AggregateException ae)
             {
                 foreach(var e in ae.InnerExceptions)
                 {
+                    _log.Create(new Logs(e.Message));
                     AddStep(e.Message);
-                    //results.Add($"{e.Message}");
                 }
             }
             catch(Exception ex)
             {
+                _log.Create(new Logs(ex.Message));
                 AddStep(ex.Message);
             }
             return JsonSerializer.Serialize(_states);
         }
 
-        public Dictionary<Func<string>, CancellationTokenSource> SplitCommand(IEnumerable<string> commands)
+        public Dictionary<TypeServiceEnum, Func<string>> SplitCommand(Request request)
         {
-            Dictionary<Func<string>, CancellationTokenSource> actions = new Dictionary<Func<string>, CancellationTokenSource>();
-            CancellationTokenSource cts = new CancellationTokenSource();
-            foreach (var command in commands)
+            Dictionary<TypeServiceEnum, Func<string>> actions = new Dictionary<TypeServiceEnum, Func<string>>();
+
+            if(request.ReqProduct != null)
             {
-                switch (command)
-                {
-                    case "product":
-                        cts = new CancellationTokenSource();
-                        actions.Add(() => CreateProduct("myproduct", cts.Token), cts);
-                        //cts.Cancel();
-                        break;
-                    case "customer":
-                        actions.Add(() => CreateCustomer("myclustomer", cts.Token), cts);
-                        break;
-                    case "relation":
-                        actions.Add(() => CreateRelation("myproduct", "myclustomer", cts.Token), cts);
-                        break;
-                    default:
-                        throw new InvalidOperationException();
-                }
+                actions.Add(TypeServiceEnum.Product, () => CreateProduct(request.ReqProduct));
             }
+
+            if(request.ReqProduct != null)
+            {
+                actions.Add(TypeServiceEnum.Customer, () => CreateCustomer(request.ReqCustomer));
+            }
+
+            if(request.Relations != null)
+            {
+                actions.Add(TypeServiceEnum.Relation, () => CreateRelation(request.Relations));
+            }
+
             return actions;
         }
 
-        public string CreateProduct(string name, CancellationToken token)
+        public string CreateProduct(ReqProduct reqProduct)
         {
-            // 1. Not work
-            Thread.Sleep(1000);
-
-            // 2. Not work
-            //bool cancel = token.WaitHandle.WaitOne(1000);
-            //if (cancel)
-            //{
-            //    return $"Canceled Product: {name}";
-            //}
-
-            // 3.
-            //for (int i = 0; i < 1; i++)
-            //{
-            //    //token.ThrowIfCancellationRequested();
-            //    Thread.Sleep(1000);
-            //}
-            return $"{Task.CurrentId}{name}";
-        }
-
-        public string CreateCustomer(string name, CancellationToken token)
-        {
-            Thread.Sleep(2000);
-
-            //bool cancel = token.WaitHandle.WaitOne(2000);
-            //if (cancel)
-            //{
-            //    return $"Canceled Product: {name}";
-            //}
-
-            //for (int i = 0; i < 2; i++)
-            //{
-            //    //token.ThrowIfCancellationRequested();
-            //    Thread.Sleep(1000);
-            //}
-            throw new InvalidOperationException("Can't do this! slave1") { Source = "slave1" };
-            return $"{Task.CurrentId}{name}";
-        }
-
-        public string CreateRelation(string productName, string customerName, CancellationToken token)
-        {
-            Thread.Sleep(3000);
-
-            //bool cancel = token.WaitHandle.WaitOne(2000);
-            //if (cancel)
-            //{
-            //    return $"Canceled both";
-            //}
-
-            //for (int i = 0; i < 3; i++)
-            //{
-            //    //token.ThrowIfCancellationRequested();
-            //    Thread.Sleep(1000);
-            //}
-            throw new Exception("Can't do this! slave2") { Source = "slave2" };
-            return $"{Task.CurrentId}{productName}-{customerName}";
-        }
-
-        public string CallSlave(Dictionary<Func<string>, CancellationTokenSource> tasks)
-        {
-            List<CancellationToken> ctses = new List<CancellationToken>();
-
-            //List<string> results = new List<string>();
-
-            var cts = new CancellationTokenSource();
-            ctses.Add(cts.Token);
-
-            foreach (var item in tasks)
-            {
-                ctses.Add(item.Value.Token);
-                var slave = Task<string>.Factory.StartNew(item.Key, cts.Token);
-                slaves.Add(slave);
-            }
-            
-            //var para = CancellationTokenSource.CreateLinkedTokenSource(ctses.ToArray());
-
+            string message = "Create product success...";
             try
             {
-                Task.WaitAll(slaves.ToArray(), cts.Token);
-                return "";
-            }
-            catch (AggregateException ae)
-            {
-                ae.Handle(e =>
+                Thread.Sleep(reqProduct.Timeout);
+
+                foreach (var item in reqProduct.Products)
                 {
-                    //if(e is InvalidOperationException)
-                    //{
-                    //    // handle case and ignore exception
-                    //    cts.Cancel();
-                    //    return true;
-                    //}
-                    return false;
-                });
-                return "";
+                    var check = _productContext.Get(item.Name);
+                    if(check == null)
+                    {
+                        _productContext.Create(new Infrastructure.Models.Product { Name = item.Name });
+                    }
+                    else
+                    {
+                        _productContext.Update(check.Id, new Infrastructure.Models.Product { Name = item.Name });
+                    }
+                }
             }
-            //return JsonSerializer.Serialize(results);
+            catch(Exception ex)
+            {
+                message = $"Fail!! {ex.Message}";
+            }
+            
+
+            return $"Product: {message}";
+        }
+
+        public string CreateCustomer(ReqCustomer reqCustomer)
+        {
+            string message = "Create customer success..";
+            try
+            {
+                Thread.Sleep(reqCustomer.Timeout);
+
+                foreach (var item in reqCustomer.Customers)
+                {
+                    var check = _customerContext.Get(item.Name);
+                    if(check == null)
+                    {
+                        _customerContext.Create(new Infrastructure.Models.Customer { Name = item.Name });
+                    }
+                    else
+                    {
+                        _customerContext.Update(check.Id, new Infrastructure.Models.Customer { Name = item.Name });
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                message = $"Fail!! {ex.Message}";
+            }
+            
+            return $"Customer: {message}";
+        }
+
+        public string CreateRelation(IEnumerable<Serializer.Relation> relations)
+        {
+            string message = "Create relation success...";
+            try
+            {
+                for (int i = 0; i < 1; i++)
+                {
+                    _cts.Token.ThrowIfCancellationRequested();
+                    Thread.Sleep(1000);
+                }
+
+                foreach (var item in relations)
+                {
+                    var productId = _productContext.Get(item.ProductName).Id;
+                    var customerId = _customerContext.Get(item.CustomerName).Id;
+                    var relationProduct = _relationContext.GetByProductId(productId);
+                    var check = relationProduct.FirstOrDefault(x => x.CustomerId == customerId);
+                    if (check == null)
+                    {
+                        _relationContext.Create(new Infrastructure.Models.Relation { ProductId = productId, CustomerId = customerId });
+                    }
+                    else
+                    {
+                        _relationContext.Update(check.Id, new Infrastructure.Models.Relation { ProductId = productId, CustomerId = customerId });
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                message = $"Fail!! {ex.Message}";
+                _cts.Cancel();
+            }
+           
+            return $"Relation: {message}";
+        }
+
+        public void CallSlave(Dictionary<TypeServiceEnum, Func<string>> tasks)
+        {
+            if (tasks.Count == 0)
+                return;
+            List<CancellationToken> ctses = new List<CancellationToken>();
+
+            foreach (var task in tasks)
+            {
+                var slave = Task.Factory.StartNew(task.Value, _cts.Token);
+                slaves.Add(task.Key, slave);
+            }
+
+            #region Optional this function for monitor
+            // For this function maybe not need because has the function Task.WaitAll();
+            Task.Factory.StartNew(() =>
+            {
+                bool isCancelled = _cts.Token.WaitHandle.WaitOne();
+                if (isCancelled)
+                {
+                    string message = "Has cancel task.";
+                    _log.Create(new Logs(message));
+                    AddStep(message);
+                }
+                else
+                {
+                    string message = "This transaction {0} is processing...";
+                    foreach (var check in slaves)
+                    {
+                        if (check.Value.Status != TaskStatus.RanToCompletion)
+                        {
+                            _log.Create(new Logs(string.Format(message, check.Key)));
+                            AddStep(string.Format(message, check.Key));
+                        }
+                    }
+                }
+            });
+
+            #endregion Optional this function for monitor
+
+            Task.WaitAll(slaves.Values.ToArray());
+            foreach(var item in slaves.Values)
+            {
+                AddStep(item.Result);
+                _log.Create(new Logs(item.Result));
+            }
+            AddStep("Migrate result success...");
+        }
+
+        public void Rollback()
+        {
+
         }
     }
 }

@@ -28,6 +28,9 @@ namespace master_slave_pattern
         {
             services.AddScoped<Master>();
             services.AddSingleton<ProductServices>();
+            services.AddSingleton<CustomerServices>();
+            services.AddSingleton<RelationServices>();
+            services.AddSingleton<LogServices>();
             services.AddControllers();
         }
 

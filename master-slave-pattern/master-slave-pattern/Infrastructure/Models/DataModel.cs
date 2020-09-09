@@ -7,27 +7,36 @@ using System.Threading.Tasks;
 
 namespace master_slave_pattern.Infrastructure.Models
 {
-    public class Product
+    public class Product : BaseModel
     {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
         public string Name { get; set; }
     }
-    public class Customer
+    public class Customer : BaseModel
     {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
         public string Name { get; set; }
     }
 
-    public class Relation
+    public class Relation : BaseModel
+    {
+        public string ProductId { get; set; }
+        public string CustomerId { get; set; }
+    }
+
+    public class Logs : BaseModel
+    {
+        public string Message { get; set; }
+        public string DateTime { get; set; }
+        public Logs(string message)
+        {
+            Message = message;
+            DateTime = System.DateTime.UtcNow.AddHours(7).ToString("yyyyMMdd HH:mm:ss");
+        }
+    }
+
+    public class BaseModel
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
-        public string ProductId { get; set; }
-        public string CustomerId { get; set; }
     }
 }

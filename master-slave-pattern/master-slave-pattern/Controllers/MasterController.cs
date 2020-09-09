@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using master_slave_pattern.Infrastructure.Models;
+using master_slave_pattern.Serializer;
 using master_slave_pattern.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,18 +25,30 @@ namespace master_slave_pattern.Controllers
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Get()
         {
-            Product product = new Product { Name = "tes2t" };
-            _productService.Create(product);
-            return Ok();
-            //return Ok(_master.Mannage());
+            //Product product = new Product { Name = "tes2t" };
+            //_productService.Create(product);
+            //return Ok();
+
+            var request = new Request
+            {
+                ReqCustomer = new ReqCustomer
+                {
+                    Timeout = 3000,
+                    Customers = new List<Serializer.Customer> { new Serializer.Customer { Name = "Nunui" } }
+                },
+                ReqProduct = new ReqProduct
+                {
+                    Timeout = 2000,
+                    Products = new List<Serializer.Product> { new Serializer.Product { Name = "Tea" } }
+                },
+                Relations = new List<Serializer.Relation> { new Serializer.Relation { CustomerName = "Nunui", ProductName = "Tea" } }
+            };
+
+            return Ok(_master.Mannage(request));
         }
 
         public IActionResult Post()
         {
-            Product product = new Product { Name = "test" };
-            _productService.Create(product);
-
-            //return CreatedAtRoute("GetBook", new { id = book.Id.ToString() }, book);
             return Ok();
         }
     }
